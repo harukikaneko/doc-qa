@@ -54,4 +54,4 @@ def get_embedder(model_name: str = "plamo") -> BaseEmbedding:
     if model_name.lower() == "plamo":
         return PlamoEmbedding()
     else:
-        raise ValueError(f"不明なモデル名: {model_name}。'plamo' または 'ruri' を使用してください。")
+        raise ValueError(f"不明なモデル名: {model_name}。'plamo' を使用してください。")
