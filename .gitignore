@@ -3,3 +3,4 @@ docstore.db
 __pycache__/
 *.py[cod]
 *$py.class
+docstore.db.wal

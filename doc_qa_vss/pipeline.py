@@ -131,68 +131,19 @@ class DocumentQASystem:
         
         return context
     
-    def generate_answer(self, question: str, context: str) -> str:
-        """
-        LLMを使用して回答を生成
-        
-        Args:
-            question: 質問
-            context: 文脈情報
-        
-        Returns:
-            生成された回答
-        """
-        if not self.use_llm or not self.model or not self.tokenizer:
-            return "LLMが初期化されていないため、回答を生成できません。検索結果のみを表示します。"
-        
-        prompt = f"""以下の文書に基づいて質問に答えてください。
-文書に含まれる情報だけを使用して答えてください。
-文書に明示的に書かれていない限り、推測はしないでください。
-回答が文書に含まれていない場合は、「この質問に答えるための情報が文書に含まれていません」と回答してください。
-
-文書情報:
-{context}
-
-質問: {question}
-
-回答:"""
-        
-        try:
-            inputs = self.tokenizer(prompt, return_tensors="pt")
-            if torch.cuda.is_available():
-                inputs = inputs.to("cuda")
-            
-            # 生成パラメータを設定
-            outputs = self.model.generate(
-                inputs.input_ids,
-                max_length=2048,
-                temperature=0.7,
-                top_p=0.9,
-                do_sample=True,
-                pad_token_id=self.tokenizer.eos_token_id
-            )
-            
-            answer = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-            # promptを除いた部分だけを抽出
-            answer = answer[len(prompt):]
-            
-            return answer.strip()
-        except Exception as e:
-            logger.error(f"回答生成中にエラーが発生しました: {str(e)}")
-            return f"回答生成中にエラーが発生しました: {str(e)}"
     
-    def answer_question(self, question: str) -> Dict[str, Any]:
+    def answer_question_mcp(self, question: str) -> Dict[str, Any]:
         """
-        検索と回答生成を組み合わせた完全なパイプライン
+        MCP形式で質問に回答
         
         Args:
             question: 質問
         
         Returns:
-            回答と関連情報を含む辞書
+            MCP形式の回答
         """
         start_time = time.time()
-        logger.info(f"質問処理中: '{question}'")
+        logger.info(f"MCP質問処理中: '{question}'")
         
         # 関連ドキュメントを検索
         retrieved_docs = self.retrieve_documents(question)
@@ -201,18 +152,13 @@ class DocumentQASystem:
             logger.warning("関連するドキュメントが見つかりませんでした。")
             return {
                 "question": question,
-                "answer": "関連するドキュメントが見つかりませんでした。",
+                "mcp_context": "関連するドキュメントが見つかりませんでした。",
                 "sources": [],
                 "elapsed_time": time.time() - start_time
             }
         
-        # 検索結果を整形して回答を生成
-        context = self.format_context(retrieved_docs)
-        
-        if self.use_llm:
-            answer = self.generate_answer(question, context)
-        else:
-            answer = "LLMを使用していないため、関連ドキュメントのみを表示します。"
+        # MCP用のフォーマットで文脈を整形
+        mcp_context = self._format_mcp_context(retrieved_docs)
         
         # ソース情報の整形
         sources = []
@@ -225,11 +171,32 @@ class DocumentQASystem:
             })
         
         elapsed_time = time.time() - start_time
-        logger.info(f"質問処理完了。経過時間: {elapsed_time:.2f}秒")
+        logger.info(f"MCP質問処理完了。経過時間: {elapsed_time:.2f}秒")
         
         return {
             "question": question,
-            "answer": answer,
+            "mcp_context": mcp_context,
             "sources": sources,
             "elapsed_time": elapsed_time
         }
+
+    def _format_mcp_context(self, retrieved_docs: List[Dict[str, Any]]) -> str:
+        """
+        検索結果からMCP用のコンテキストを形成
+        
+        Args:
+            retrieved_docs: 検索結果ドキュメントのリスト
+        
+        Returns:
+            MCP用に整形された文脈文字列
+        """
+        mcp_parts = []
+        for i, doc in enumerate(retrieved_docs, 1):
+            metadata = doc["metadata"]
+            filename = metadata.get("filename", "不明")
+            page = metadata.get("page", "不明")
+            
+            # MCPフォーマットでドキュメントを追加
+            mcp_parts.append(f"[出典{i}] ファイル: {filename}, ページ: {page}\n{doc['content']}")
+        
+        return "\n\n".join(mcp_parts)
