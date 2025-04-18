@@ -53,8 +53,7 @@ class DocumentQASystem:
             self._setup_llm()
     
     @classmethod
-    def setup(cls, model_name: str, db_path: str, 
-             use_llm: bool = False, llm_model: Optional[str] = None):
+    def setup(cls, model_name: str, db_path: str):
         """
         システムのセットアップと初期化
         
@@ -68,29 +67,8 @@ class DocumentQASystem:
             初期化されたDocumentQASystemインスタンス
         """
         db, embedder = setup_system(model_name, db_path)
-        return cls(db, embedder, use_llm, llm_model)
-    
-    def _setup_llm(self):
-        """LLMのセットアップ"""
-        logger.info(f"LLM {self.llm_model} を初期化中...")
-        try:
-            self.tokenizer = AutoTokenizer.from_pretrained(self.llm_model)
-            
-            # GPUが利用可能であれば使用
-            device_map = "auto" if torch.cuda.is_available() else None
-            dtype = torch.float16 if torch.cuda.is_available() else torch.float32
-            
-            self.model = AutoModelForCausalLM.from_pretrained(
-                self.llm_model,
-                torch_dtype=dtype,
-                device_map=device_map
-            )
-            logger.info("LLMの初期化が完了しました")
-        except Exception as e:
-            logger.error(f"LLM初期化中にエラーが発生しました: {str(e)}")
-            self.use_llm = False
-            self.model = None
-            self.tokenizer = None
+        return cls(db, embedder)
+
     
     def retrieve_documents(self, question: str, top_k: int = 5) -> List[Dict[str, Any]]:
         """

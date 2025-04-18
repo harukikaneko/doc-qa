@@ -58,9 +58,8 @@ if __name__ == "__main__":
     try:
         logger.info(f"QAシステムを初期化しています（モデル: {args.model}, DB: {args.db}）")
         qa_system = DocumentQASystem.setup(
-            model_name=args.model,
-            db_path=args.db, 
-            use_llm=False  # MCPではLLMは使用しない
+            model_name="plamo",
+            db_path="../docstore.db", 
         )
         logger.info("QAシステムの初期化が完了しました")
     except Exception as e:
