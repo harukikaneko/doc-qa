@@ -1,6 +1,5 @@
 [project]
 dependencies = [
-  "bitsandbytes>=0.40.0",
   "duckdb>=0.9.0",
   "torch>=2.0.0",
   "transformers==4.51.3",
@@ -12,24 +11,22 @@ dependencies = [
   "tqdm>=4.65.0",
   "numpy>=1.24.0",
   "accelerate>=0.20.0",
+  "mcp[cli]>=1.6.0",
+  "fastmcp>=2.2.0",
 ]
 description = "Document QA system using vector similarity search with DuckDB-VSS"
 license = {text = "MIT"}
 name = "doc_qa_vss"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 version = "0.1.0"
 
 [build-system]
 build-backend = "hatchling.build"
 requires = ["hatchling"]
 
-[tool.pytest]
-testpaths = ["tests"]
-
 [tool.black]
 line-length = 88
-target-version = ["py38"]
 
 [project.scripts]
 docqa = "doc_qa_vss.cli:main"

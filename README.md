@@ -28,5 +28,5 @@ docqa interact --model plamo --use-llm
 ### 単一の質問に回答
 
 ```bash
-docqa ask "あなたの質問" --model plamo --use-llm
+docqa ask --model plamo --use-llm "あなたの質問"
 ```

@@ -15,6 +15,7 @@ class BaseEmbedding:
         logger.info(f"モデル {model_name} を読み込み中...")
         # リモートコードを含むモデルの場合に信頼フラグを設定
         kwargs = {"trust_remote_code": True} if use_trust_remote_code else {}
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name, **kwargs)
         self.model = AutoModel.from_pretrained(model_name, **kwargs)
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.model = self.model.to(self.device)

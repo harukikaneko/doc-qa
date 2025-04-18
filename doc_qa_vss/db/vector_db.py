@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 class VectorDatabase:
     """DuckDB-VSS（HNSW）を使ったベクトルデータベース管理クラス"""
 
-    def __init__(self, db_path: str = "docstore.db", embedding_dim: int = 768):
+    def __init__(self, db_path: str = "docstore.db", embedding_dim: int = 2048):
         """
         ベクトルデータベースを初期化
         
