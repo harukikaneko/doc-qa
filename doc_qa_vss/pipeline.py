@@ -75,7 +75,7 @@ class DocumentQASystem:
             関連ドキュメントのリスト
         """
         # 質問をエンベディング化
-        query_embedding = self.embedder.embed_text(question)
+        query_embedding = self.embedder.embed_query(question)
         
         # 類似ドキュメントを検索
         results = self.db.search_similar(query_embedding, top_k)

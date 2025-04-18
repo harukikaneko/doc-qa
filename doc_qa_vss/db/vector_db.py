@@ -124,8 +124,6 @@ class VectorDatabase:
         Returns:
             リスト(dict{id, content, similarity, metadata})
         """
-        if query_embedding.shape[0] != self.embedding_dim:
-            raise ValueError(f"query_embedding の長さが {self.embedding_dim} ではありません")
         
         rows = self.conn.execute(f"""
             SELECT 
@@ -137,7 +135,7 @@ class VectorDatabase:
             JOIN documents d ON d.id = e.document_id
             ORDER BY similarity
             LIMIT ?;
-        """, [query_embedding.tolist(), top_k]).fetchall()
+        """, [query_embedding, top_k]).fetchall()
 
         results = []
         for doc_id, content, sim, meta_json in rows:

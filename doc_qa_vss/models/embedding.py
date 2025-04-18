@@ -25,6 +25,9 @@ class BaseEmbedding:
 
     def embed_text(self, text: str) -> np.ndarray:
         return self.embed_texts([text])[0]
+    
+    def embed_query(self, query: str) -> np.ndarray:
+        return self.embed_text(query)
 
 
 class PlamoEmbedding(BaseEmbedding):
@@ -39,7 +42,6 @@ class PlamoEmbedding(BaseEmbedding):
         for text in texts:
             if len(text) > 10000:
                 logger.warning(f"テキストが長すぎます ({len(text)} 文字)。結果が切り詰められる可能性があります。")
-            # 公式メソッド encode_query / encode_document を利用
             with torch.no_grad():
                 # 文書と検索クエリを自動判定しない場合はすべて document として扱う例
                 emb = self.model.encode_document([text], self.tokenizer).cpu().numpy()[0]
@@ -47,6 +49,10 @@ class PlamoEmbedding(BaseEmbedding):
             emb = emb / np.linalg.norm(emb)
             embeddings.append(emb)
         return embeddings
+    
+    def embed_query(self, query: str) -> np.ndarray:
+        with torch.inference_mode():
+            return self.model.encode_query(query, self.tokenizer).cpu().squeeze().numpy().tolist()
 
 
 def get_embedder(model_name: str = "plamo") -> BaseEmbedding:
