@@ -1,0 +1,5 @@
+doc_qa_vss.log
+docstore.db
+__pycache__/
+*.py[cod]
+*$py.class
