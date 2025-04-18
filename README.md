@@ -19,14 +19,20 @@ uv pip install -e .
 docqa index --dir /path/to/documents --model plamo
 ```
 
-### 対話型質問応答
+### setup
 
-```bash
-docqa interact --model plamo --use-llm
-```
-
-### 単一の質問に回答
-
-```bash
-docqa ask --model plamo --use-llm "あなたの質問"
+```json
+{
+  "mcpServers": {
+    "box-mcp-server": {
+      "command": "/path/to/uv", // 絶対パスが推奨
+      "args": [
+        "--directory",
+        "/path/to/doc-qa-system/doc_qa_vss",
+        "run",
+        "server.py"
+      ]
+    }
+  }
+}
 ```
