@@ -1,6 +1,6 @@
 # Document QA System with Vector Similarity Search
 
-DuckDB-VSS と Python を使用した文書質問応答システム。plamo-embedding-1b や Ruri-v3 などの埋め込みモデルを利用して、
+DuckDB-VSS と Python を使用した文書質問応答システム。plamo-embedding-1b を利用して、
 MCP（Mean Contextualized Pooling）方式で文書検索を行います。
 
 ## インストール
