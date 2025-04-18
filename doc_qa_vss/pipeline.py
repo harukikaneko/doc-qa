@@ -1,0 +1,235 @@
+import torch
+import logging
+from typing import List, Dict, Any, Tuple, Optional
+import time
+
+from doc_qa_vss.db.vector_db import VectorDatabase
+from doc_qa_vss.models.embedding import get_embedder, BaseEmbedding
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+logger = logging.getLogger(__name__)
+
+def setup_system(model_name: str, db_path: str) -> Tuple[VectorDatabase, BaseEmbedding]:
+    """
+    システムのセットアップ：データベースと埋め込みモデル
+    
+    Args:
+        model_name: 埋め込みモデル名 ('plamo' または 'ruri')
+        db_path: データベースファイルパス
+    
+    Returns:
+        データベースと埋め込みモデルのタプル
+    """
+    # データベースの初期化
+    db = VectorDatabase(db_path)
+    
+    # 埋め込みモデルの初期化
+    embedder = get_embedder(model_name)
+    
+    return db, embedder
+
+class DocumentQASystem:
+    """ドキュメント質問応答システム"""
+    
+    def __init__(self, db: VectorDatabase, embedder: BaseEmbedding, 
+                use_llm: bool = False, llm_model: Optional[str] = None):
+        """
+        初期化
+        
+        Args:
+            db: ベクトルデータベース
+            embedder: 埋め込みモデル
+            use_llm: LLMを使って回答を生成するかどうか
+            llm_model: 使用するLLMモデル名
+        """
+        self.db = db
+        self.embedder = embedder
+        self.use_llm = use_llm
+        self.llm_model = llm_model
+        self.tokenizer = None
+        self.model = None
+        
+        if use_llm and llm_model:
+            self._setup_llm()
+    
+    @classmethod
+    def setup(cls, model_name: str, db_path: str, 
+             use_llm: bool = False, llm_model: Optional[str] = None):
+        """
+        システムのセットアップと初期化
+        
+        Args:
+            model_name: 埋め込みモデル名
+            db_path: データベースファイルパス
+            use_llm: LLMを使用するかどうか
+            llm_model: LLMモデル名
+        
+        Returns:
+            初期化されたDocumentQASystemインスタンス
+        """
+        db, embedder = setup_system(model_name, db_path)
+        return cls(db, embedder, use_llm, llm_model)
+    
+    def _setup_llm(self):
+        """LLMのセットアップ"""
+        logger.info(f"LLM {self.llm_model} を初期化中...")
+        try:
+            self.tokenizer = AutoTokenizer.from_pretrained(self.llm_model)
+            
+            # GPUが利用可能であれば使用
+            device_map = "auto" if torch.cuda.is_available() else None
+            dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+            
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.llm_model,
+                torch_dtype=dtype,
+                device_map=device_map
+            )
+            logger.info("LLMの初期化が完了しました")
+        except Exception as e:
+            logger.error(f"LLM初期化中にエラーが発生しました: {str(e)}")
+            self.use_llm = False
+            self.model = None
+            self.tokenizer = None
+    
+    def retrieve_documents(self, question: str, top_k: int = 5) -> List[Dict[str, Any]]:
+        """
+        質問に関連するドキュメントを検索
+        
+        Args:
+            question: 検索クエリ
+            top_k: 返す結果の最大数
+        
+        Returns:
+            関連ドキュメントのリスト
+        """
+        # 質問をエンベディング化
+        query_embedding = self.embedder.embed_text(question)
+        
+        # 類似ドキュメントを検索
+        results = self.db.search_similar(query_embedding, top_k)
+        
+        return results
+    
+    def format_context(self, retrieved_docs: List[Dict[str, Any]]) -> str:
+        """
+        検索結果から文脈を形成
+        
+        Args:
+            retrieved_docs: 検索結果ドキュメントのリスト
+        
+        Returns:
+            整形された文脈文字列
+        """
+        context = ""
+        for i, doc in enumerate(retrieved_docs):
+            metadata = doc["metadata"]
+            filename = metadata.get("filename", "不明")
+            page = metadata.get("page", "不明")
+            
+            context += f"文書{i+1} (ファイル: {filename}, ページ: {page}):\n{doc['content']}\n\n"
+        
+        return context
+    
+    def generate_answer(self, question: str, context: str) -> str:
+        """
+        LLMを使用して回答を生成
+        
+        Args:
+            question: 質問
+            context: 文脈情報
+        
+        Returns:
+            生成された回答
+        """
+        if not self.use_llm or not self.model or not self.tokenizer:
+            return "LLMが初期化されていないため、回答を生成できません。検索結果のみを表示します。"
+        
+        prompt = f"""以下の文書に基づいて質問に答えてください。
+文書に含まれる情報だけを使用して答えてください。
+文書に明示的に書かれていない限り、推測はしないでください。
+回答が文書に含まれていない場合は、「この質問に答えるための情報が文書に含まれていません」と回答してください。
+
+文書情報:
+{context}
+
+質問: {question}
+
+回答:"""
+        
+        try:
+            inputs = self.tokenizer(prompt, return_tensors="pt")
+            if torch.cuda.is_available():
+                inputs = inputs.to("cuda")
+            
+            # 生成パラメータを設定
+            outputs = self.model.generate(
+                inputs.input_ids,
+                max_length=2048,
+                temperature=0.7,
+                top_p=0.9,
+                do_sample=True,
+                pad_token_id=self.tokenizer.eos_token_id
+            )
+            
+            answer = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+            # promptを除いた部分だけを抽出
+            answer = answer[len(prompt):]
+            
+            return answer.strip()
+        except Exception as e:
+            logger.error(f"回答生成中にエラーが発生しました: {str(e)}")
+            return f"回答生成中にエラーが発生しました: {str(e)}"
+    
+    def answer_question(self, question: str) -> Dict[str, Any]:
+        """
+        検索と回答生成を組み合わせた完全なパイプライン
+        
+        Args:
+            question: 質問
+        
+        Returns:
+            回答と関連情報を含む辞書
+        """
+        start_time = time.time()
+        logger.info(f"質問処理中: '{question}'")
+        
+        # 関連ドキュメントを検索
+        retrieved_docs = self.retrieve_documents(question)
+        
+        if not retrieved_docs:
+            logger.warning("関連するドキュメントが見つかりませんでした。")
+            return {
+                "question": question,
+                "answer": "関連するドキュメントが見つかりませんでした。",
+                "sources": [],
+                "elapsed_time": time.time() - start_time
+            }
+        
+        # 検索結果を整形して回答を生成
+        context = self.format_context(retrieved_docs)
+        
+        if self.use_llm:
+            answer = self.generate_answer(question, context)
+        else:
+            answer = "LLMを使用していないため、関連ドキュメントのみを表示します。"
+        
+        # ソース情報の整形
+        sources = []
+        for doc in retrieved_docs:
+            sources.append({
+                "content": doc["content"][:200] + "..." if len(doc["content"]) > 200 else doc["content"],
+                "similarity": doc["similarity"],
+                "page": doc["metadata"].get("page", "N/A"),
+                "filename": doc["metadata"].get("filename", "N/A")
+            })
+        
+        elapsed_time = time.time() - start_time
+        logger.info(f"質問処理完了。経過時間: {elapsed_time:.2f}秒")
+        
+        return {
+            "question": question,
+            "answer": answer,
+            "sources": sources,
+            "elapsed_time": elapsed_time
+        }
