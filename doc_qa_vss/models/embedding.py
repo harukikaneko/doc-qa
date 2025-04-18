@@ -3,7 +3,6 @@ import numpy as np
 from typing import List
 import logging
 from transformers import AutoTokenizer, AutoModel
-from sentence_transformers import SentenceTransformer
 
 logger = logging.getLogger(__name__)
 
@@ -50,31 +49,9 @@ class PlamoEmbedding(BaseEmbedding):
         return embeddings
 
 
-class RuriEmbedding(BaseEmbedding):
-    """cl-nagoya/ruri-v3-310mモデルを使用した埋め込み生成"""
-
-    def __init__(self, model_name: str = "cl-nagoya/ruri-v3-310m"):
-        # SentenceTransformer で prefix と pooling を一括処理
-        logger.info(f"SentenceTransformer 版 Ruri モデル {model_name} を読み込み中...")
-        self.model = SentenceTransformer(model_name, device="cuda" if torch.cuda.is_available() else "cpu")
-        # 以下は BaseEmbedding に合わせて属性だけ設定
-        self.tokenizer = self.model.tokenizer  # ダミー参照
-        self.device = self.model.device
-        self.model_name = model_name
-        logger.info(f"SentenceTransformer モデルを {self.device} にロードしました。")
-
-    def embed_texts(self, texts: List[str]) -> List[np.ndarray]:
-        # convert_to_numpy=True で numpy 配列を返す
-        embs = self.model.encode(texts, convert_to_numpy=True, show_progress_bar=False)
-        # 各ベクトルは既に L2 正規化済み
-        return [emb for emb in embs]
-
-
 def get_embedder(model_name: str = "plamo") -> BaseEmbedding:
     """モデル名に基づいて適切な埋め込みモデルを返す"""
     if model_name.lower() == "plamo":
         return PlamoEmbedding()
-    elif model_name.lower() == "ruri":
-        return RuriEmbedding()
     else:
         raise ValueError(f"不明なモデル名: {model_name}。'plamo' または 'ruri' を使用してください。")

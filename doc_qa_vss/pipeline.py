@@ -14,7 +14,7 @@ def setup_system(model_name: str, db_path: str) -> Tuple[VectorDatabase, BaseEmb
     システムのセットアップ：データベースと埋め込みモデル
     
     Args:
-        model_name: 埋め込みモデル名 ('plamo' または 'ruri')
+        model_name: 埋め込みモデル名 ('plamo')
         db_path: データベースファイルパス
     
     Returns:
@@ -31,8 +31,7 @@ def setup_system(model_name: str, db_path: str) -> Tuple[VectorDatabase, BaseEmb
 class DocumentQASystem:
     """ドキュメント質問応答システム"""
     
-    def __init__(self, db: VectorDatabase, embedder: BaseEmbedding, 
-                use_llm: bool = False, llm_model: Optional[str] = None):
+    def __init__(self, db: VectorDatabase, embedder: BaseEmbedding):
         """
         初期化
         
@@ -44,13 +43,8 @@ class DocumentQASystem:
         """
         self.db = db
         self.embedder = embedder
-        self.use_llm = use_llm
-        self.llm_model = llm_model
         self.tokenizer = None
         self.model = None
-        
-        if use_llm and llm_model:
-            self._setup_llm()
     
     @classmethod
     def setup(cls, model_name: str, db_path: str):
