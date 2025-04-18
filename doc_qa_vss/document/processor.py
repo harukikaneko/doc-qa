@@ -1,18 +1,9 @@
-import os
 import logging
-from typing import List, Dict, Any, Optional
+from markitdown import MarkItDown
 from pathlib import Path
 from tqdm import tqdm
 
-from langchain.document_loaders import (
-    PyPDFLoader, 
-    TextLoader, 
-    UnstructuredWordDocumentLoader,
-    CSVLoader,
-    UnstructuredExcelLoader
-)
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.schema import Document
 
 from doc_qa_vss.db.vector_db import VectorDatabase
 from doc_qa_vss.models.embedding import BaseEmbedding
@@ -38,107 +29,56 @@ class DocumentProcessor:
             separators=["\n\n", "\n", "。", "、", " ", ""]
         )
     
-    def load_document(self, file_path: str) -> List[Document]:
+    def process_markdown(self, markdown_text: str, metadata: dict = None) -> list:
         """
-        ファイルタイプに応じたローダーを使用してドキュメントを読み込む
+        Markdownテキストを処理してチャンクに分割
         
         Args:
-            file_path: 読み込むファイルのパス
+            markdown_text: 処理するMarkdownテキスト
+            metadata: チャンクに追加するメタデータ
         
         Returns:
-            ドキュメントのリスト
+            チャンクのリスト
         """
-        file_path = str(file_path)  # Pathオブジェクトの場合は文字列に変換
-        file_ext = os.path.splitext(file_path)[1].lower()
+        if metadata is None:
+            metadata = {}
         
-        try:
-            if file_ext == '.pdf':
-                logger.info(f"PDFファイルを読み込み中: {file_path}")
-                loader = PyPDFLoader(file_path)
-            elif file_ext in ['.docx', '.doc']:
-                logger.info(f"Wordファイルを読み込み中: {file_path}")
-                loader = UnstructuredWordDocumentLoader(file_path)
-            elif file_ext == '.txt':
-                logger.info(f"テキストファイルを読み込み中: {file_path}")
-                loader = TextLoader(file_path, encoding='utf-8')
-            elif file_ext in ['.csv']:
-                logger.info(f"CSVファイルを読み込み中: {file_path}")
-                loader = CSVLoader(file_path)
-            elif file_ext in ['.xlsx', '.xls']:
-                logger.info(f"Excelファイルを読み込み中: {file_path}")
-                loader = UnstructuredExcelLoader(file_path)
-            else:
-                logger.warning(f"未サポートのファイル形式: {file_ext}")
-                return []
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=self.chunk_size,
+            chunk_overlap=self.chunk_overlap,
+            separators=["\n## ", "\n### ", "\n#### ", "\n", " ", ""]
+        )
+        
+        chunks = []
+        texts = text_splitter.split_text(markdown_text)
+        
+        for i, text in enumerate(texts):
+            # 新しいメタデータを作成（元のメタデータをコピー）
+            chunk_metadata = metadata.copy()
+            # チャンク番号を追加
+            chunk_metadata["chunk"] = i
             
-            documents = loader.load()
-            logger.info(f"{len(documents)} ドキュメントが読み込まれました")
-            return documents
-            
-        except Exception as e:
-            logger.error(f"ファイル読み込み中にエラーが発生しました ({file_path}): {str(e)}")
-            return []
-    
-    def split_documents(self, documents: List[Document]) -> List[Document]:
-        """
-        ドキュメントを適切なサイズのチャンクに分割
+            # Document オブジェクトを作成（langchainの Document クラスを想定）
+            from langchain.docstore.document import Document
+            chunk = Document(page_content=text, metadata=chunk_metadata)
+            chunks.append(chunk)
         
-        Args:
-            documents: 分割するドキュメントのリスト
-        
-        Returns:
-            分割されたドキュメントのリスト
-        """
-        try:
-            splits = self.text_splitter.split_documents(documents)
-            logger.info(f"ドキュメントが {len(splits)} チャンクに分割されました")
-            return splits
-        except Exception as e:
-            logger.error(f"ドキュメント分割中にエラーが発生しました: {str(e)}")
-            return documents  # エラーが発生した場合は元のドキュメントを返す
-    
-    def process_file(self, file_path: str) -> List[Document]:
-        """
-        ファイルを読み込んで適切なサイズに分割
-        
-        Args:
-            file_path: 処理するファイルのパス
-        
-        Returns:
-            処理されたドキュメントチャンクのリスト
-        """
-        # ファイル名をメタデータとして取得
-        filename = os.path.basename(file_path)
-        
-        # ドキュメントを読み込む
-        documents = self.load_document(file_path)
-        
-        # ファイル名をメタデータに追加
-        for doc in documents:
-            doc.metadata["filename"] = filename
-        
-        # 分割
-        if documents:
-            chunks = self.split_documents(documents)
-            return chunks
-        
-        return []
+        return chunks
 
 
-def index_documents_directory(directory_path: str, db: VectorDatabase, embedder: BaseEmbedding, 
-                             file_extensions: List[str] = ['.pdf', '.docx', '.txt', '.csv', '.xlsx']):
+def index_documents_directory(directory_path: str, db: VectorDatabase, embedder: BaseEmbedding) -> int:
     """
-    ディレクトリ内のすべてのサポートされているファイルをインデックス化
+    ディレクトリ内のすべてのmarkitdownでサポートされているファイルをインデックス化
     
     Args:
         directory_path: インデックス化するドキュメントのディレクトリ
         db: ベクトルデータベース
         embedder: 埋め込みモデル
-        file_extensions: インデックス化するファイル拡張子のリスト
     
     Returns:
         インデックス化されたドキュメントの数
     """
+    logger = logging.getLogger(__name__)
     logger.info(f"{directory_path} 内のドキュメントをインデックス化中...")
     
     processor = DocumentProcessor()
@@ -148,22 +88,25 @@ def index_documents_directory(directory_path: str, db: VectorDatabase, embedder:
         logger.error(f"ディレクトリが存在しません: {directory_path}")
         return 0
     
-    # サポートされているファイルをスキャン
-    files = []
-    for ext in file_extensions:
-        files.extend(list(directory.glob(f"**/*{ext}")))
+    # すべてのファイルを取得 (markitdownが処理できるかは後でチェック)
+    files = list(directory.glob("**/*.*"))
     
     if not files:
-        logger.warning(f"サポートされているファイルが見つかりませんでした: {file_extensions}")
+        logger.warning(f"ディレクトリ内にファイルが見つかりませんでした")
         return 0
     
-    logger.info(f"{len(files)} ファイルが見つかりました")
+    logger.info(f"{len(files)} ファイルが見つかりました。markitdownで処理可能なファイルをインデックス化します")
     
     total_chunks = 0
     for file_path in tqdm(files):
         try:
-            # ファイルを処理
-            chunks = processor.process_file(str(file_path))
+            # markitdownを使用してファイルをMarkdownに変換
+            # markitdownがサポートしていないファイルタイプの場合は例外が発生するので、
+            # その場合は次のファイルに進む
+            md_content = convert_to_markdown(str(file_path))
+            
+            # Markdownコンテンツから処理チャンクを取得
+            chunks = processor.process_markdown(md_content, metadata={"source": str(file_path)})
             
             if not chunks:
                 logger.warning(f"ファイルからチャンクを抽出できませんでした: {file_path}")
@@ -186,7 +129,32 @@ def index_documents_directory(directory_path: str, db: VectorDatabase, embedder:
             logger.info(f"{file_path} のインデックス化完了: {len(chunks)} チャンク")
             
         except Exception as e:
-            logger.error(f"ファイルのインデックス化エラー {file_path}: {str(e)}")
+            # markitdownがサポートしていないファイルタイプや処理エラーの場合
+            logger.debug(f"ファイル {file_path} はスキップされました: {str(e)}")
+            continue
     
     logger.info(f"全ドキュメントのインデックス化完了。合計 {total_chunks} チャンク")
     return total_chunks
+
+def convert_to_markdown(file_path: str) -> str:
+    """
+    任意のファイルタイプをMarkdownに変換
+    
+    Args:
+        file_path: 変換するファイルのパス
+    
+    Returns:
+        Markdown形式のテキスト
+    """
+    logger = logging.getLogger(__name__)
+    logger.info(f"ファイルをMarkdownに変換中: {file_path}")
+    md = MarkItDown()
+    try:
+
+        # markitdownを使用してファイルをMarkdownに変換
+        result = md.convert(file_path)
+        return result.text_content
+    except Exception as e:
+        logger.error(f"Markdownへの変換エラー {file_path}: {str(e)}")
+        # エラーの場合は空の文字列を返す代わりに例外を再発生させる
+        raise

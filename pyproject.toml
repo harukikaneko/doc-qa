@@ -13,6 +13,7 @@ dependencies = [
   "accelerate>=0.20.0",
   "mcp[cli]>=1.6.0",
   "fastmcp>=2.2.0",
+  "markitdown[all]>=0.1.1",
 ]
 description = "Document QA system using vector similarity search with DuckDB-VSS"
 license = {text = "MIT"}
@@ -30,3 +31,6 @@ line-length = 88
 
 [project.scripts]
 docqa = "doc_qa_vss.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["doc_qa_vss"]
