@@ -136,6 +136,36 @@ def index_documents_directory(directory_path: str, db: VectorDatabase, embedder:
     logger.info(f"全ドキュメントのインデックス化完了。合計 {total_chunks} チャンク")
     return total_chunks
 
+
+def index_document_content(content: str, db: VectorDatabase, embedder: BaseEmbedding, metadata: dict = None) -> int:
+    """
+    任意のコンテンツをインデックス化
+    
+    Args:
+        content: インデックス化するコンテンツ
+        db: ベクトルデータベース
+        embedder: 埋め込みモデル
+        metadata: メタデータ（オプション）
+    
+    Returns:
+        インデックス化されたドキュメtントのID
+    """
+    logger = logging.getLogger(__name__)
+    logger.info("コンテンツをインデックス化中...")
+
+    # エンベディングを生成
+    embedding = embedder.embed_text(content)
+    
+    # データベースに保存
+    doc_id = db.insert_document(
+        content=content,
+        metadata=metadata,
+        embedding=embedding
+    )
+    
+    logger.info(f"インデックス化完了")
+    return doc_id
+
 def convert_to_markdown(file_path: str) -> str:
     """
     任意のファイルタイプをMarkdownに変換

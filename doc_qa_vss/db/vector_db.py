@@ -151,7 +151,7 @@ class VectorDatabase:
             })
         return results
 
-    def close(self):
+    async def close(self):
         """接続をクローズ"""
         self.conn.close()
         logger.info("接続を閉じました。")

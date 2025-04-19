@@ -96,7 +96,7 @@ class DocumentQASystem:
         return context
     
     
-    def answer_question_mcp(self, question: str) -> Dict[str, Any]:
+    async def answer_question_mcp(self, question: str) -> Dict[str, Any]:
         """
         MCP形式で質問に回答
         

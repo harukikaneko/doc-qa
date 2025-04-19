@@ -2,14 +2,18 @@
 MCP Server for Document QA System
 """
 
+import atexit
 import os
 import sys
-import atexit
 import logging
+from pydantic import BaseModel
+from fastapi import FastAPI
+import uvicorn
 from typing import Optional, Dict, Any, Tuple
 
 from pydantic import BaseModel, Field
-from mcp.server.fastmcp import FastMCP
+
+app = FastAPI()
 
 # 設定の外部化
 from dotenv import load_dotenv
@@ -36,6 +40,13 @@ except ImportError as e:
 # 設定を環境変数から読み込む
 MODEL_NAME = os.getenv("MODEL_NAME", "plamo")
 DB_PATH = os.getenv("DB_PATH", "../docstore.db")
+
+# ロギング設定
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 class QASystemSingleton:
     _instance: Optional[Tuple[VectorDatabase, BaseEmbedding, DocumentQASystem]] = None
@@ -88,21 +99,14 @@ class MCPResponse(BaseModel):
     data: Dict[str, Any] = Field({}, description="レスポンスデータ")
     error: Optional[str] = Field(None, description="エラーメッセージ（存在する場合）")
 
-# MCP設定
-mcp = FastMCP("Doc QA VSS")
-
-# MCPツール
-@mcp.tool()
-async def get_answer(question: Question) -> MCPResponse:
+@app.post("/mcp/query", response_model=MCPResponse)
+async def get_answer(question: Question):
     """質問に対する回答を取得"""
     try:
-        db, _, qa_system = await QASystemSingleton.get_instance()
+        _, _, qa_system = await QASystemSingleton.get_instance()
         # 質問処理
         logger.info(f"質問を処理しています: {question.text}")
         result = await qa_system.answer_question_mcp(question.text)
-        
-        await db.close()
-        logger.info("データベース接続をクローズしました")
 
         return MCPResponse(
             status="success",
@@ -119,8 +123,8 @@ async def get_answer(question: Question) -> MCPResponse:
             error=f"質問処理に失敗しました: {str(e)}"
         )
 
-@mcp.tool()
-async def create_document(document: Document) -> MCPResponse:
+@app.post("/mcp/create", response_model=str)
+async def create_document(document: Document):
     """新しいドキュメントをインデックス化"""
     try:
         db, embedder, _ = await QASystemSingleton.get_instance()
@@ -131,9 +135,6 @@ async def create_document(document: Document) -> MCPResponse:
             embedder, 
             metadata={"title": document.title}
         )
-
-        await db.close()
-        logger.info("データベース接続をクローズしました")
         
         return MCPResponse(
             status="success",
@@ -152,5 +153,28 @@ async def create_document(document: Document) -> MCPResponse:
 
 # エントリーポイント
 if __name__ == "__main__":
-    print("Starting MCP server in stdio mode")
-    mcp.run(transport="stdio")
+    # QAシステムの初期化
+    try:
+        logger.info(f"QAシステムを初期化しています")
+        db, embedder = setup_system("plamo", "../docstore.db")
+        qa_system = DocumentQASystem.setup(
+            embedder=embedder,
+            db=db, 
+        )
+        logger.info("QAシステムの初期化が完了しました")
+    
+        def cleanup():
+                logger.info("サーバーをシャットダウンしています。DBコネクションを閉じます。")
+                if db:
+                    db.close()
+                logger.info("DBコネクションを閉じました。")
+            
+        # プログラム終了時に実行される関数を登録
+        atexit.register(cleanup)
+    
+
+    except Exception as e:
+        logger.error(f"QAシステムの初期化に失敗しました: {e}")
+        sys.exit(1)
+    
+    uvicorn.run(app, host="127.0.0.1", port=8000)

@@ -23,8 +23,8 @@ def parse_args():
     # indexコマンド
     index_parser = subparsers.add_parser("index", help="ドキュメントをインデックス化")
     index_parser.add_argument("--dir", "-d", required=True, help="インデックス化するドキュメントディレクトリ")
-    index_parser.add_argument("--model", "-m", choices=["plamo", "ruri"], default="plamo", 
-                             help="使用する埋め込みモデル (plamo または ruri)")
+    index_parser.add_argument("--model", "-m", choices=["plamo"], default="plamo", 
+                             help="使用する埋め込みモデル (plamo)")
     index_parser.add_argument("--db", default="docstore.db", help="DuckDBデータベースのパス")
     
     return parser.parse_args()
