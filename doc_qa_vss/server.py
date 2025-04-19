@@ -2,9 +2,13 @@
 MCP Server for Document QA System
 """
 
+from contextlib import asynccontextmanager
+from contextvars import Context
+from dataclasses import dataclass
 import sys
 import logging
 import argparse
+from typing import AsyncIterator
 from pydantic import BaseModel
 from mcp.server.fastmcp import FastMCP
 
@@ -37,8 +41,6 @@ class MCPResponse(BaseModel):
 parser = argparse.ArgumentParser(description="MCPサーバーを起動")
 parser.add_argument("--model", default="plamo", help="使用するモデル名")
 parser.add_argument("--db", default="docstore.db", help="ベクトルDBへのパス")
-parser.add_argument("--host", default="127.0.0.1", help="ホストアドレス")
-parser.add_argument("--port", type=int, default=8000, help="ポート番号")
 
 args = parser.parse_args()
 

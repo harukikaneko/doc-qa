@@ -4,7 +4,6 @@ import time
 
 from doc_qa_vss.db.vector_db import VectorDatabase
 from doc_qa_vss.models.embedding import get_embedder, BaseEmbedding
-from transformers import AutoModelForCausalLM, AutoTokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -37,13 +36,9 @@ class DocumentQASystem:
         Args:
             db: ベクトルデータベース
             embedder: 埋め込みモデル
-            use_llm: LLMを使って回答を生成するかどうか
-            llm_model: 使用するLLMモデル名
         """
         self.db = db
         self.embedder = embedder
-        self.tokenizer = None
-        self.model = None
     
     @classmethod
     def setup(cls, model_name: str, db_path: str):
