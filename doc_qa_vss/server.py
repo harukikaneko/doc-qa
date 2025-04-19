@@ -6,7 +6,7 @@ import sys
 import logging
 import argparse
 from pydantic import BaseModel
-from fastmcp import FastMCP
+from mcp.server.fastmcp import FastMCP
 
 mcp = FastMCP("Doc QA VSS", "doc_qa_vss")
 
