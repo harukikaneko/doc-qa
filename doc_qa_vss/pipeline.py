@@ -41,20 +41,18 @@ class DocumentQASystem:
         self.embedder = embedder
     
     @classmethod
-    def setup(cls, model_name: str, db_path: str):
+    def setup(cls, embedder: BaseEmbedding, db: VectorDatabase):
         """
         システムのセットアップと初期化
         
         Args:
-            model_name: 埋め込みモデル名
-            db_path: データベースファイルパス
-            use_llm: LLMを使用するかどうか
-            llm_model: LLMモデル名
+            embedder: 埋め込みモデル
+            db: データベース
         
         Returns:
             初期化されたDocumentQASystemインスタンス
         """
-        db, embedder = setup_system(model_name, db_path)
+
         return cls(db, embedder)
 
     

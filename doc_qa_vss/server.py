@@ -2,6 +2,7 @@
 MCP Server for Document QA System
 """
 
+import atexit
 from contextlib import asynccontextmanager
 from contextvars import Context
 from dataclasses import dataclass
@@ -9,6 +10,7 @@ import sys
 import logging
 import argparse
 from typing import AsyncIterator
+from doc_qa_vss.pipeline import setup_system
 from pydantic import BaseModel
 from mcp.server.fastmcp import FastMCP
 
@@ -40,7 +42,7 @@ class MCPResponse(BaseModel):
 # コマンドライン引数の処理
 parser = argparse.ArgumentParser(description="MCPサーバーを起動")
 parser.add_argument("--model", default="plamo", help="使用するモデル名")
-parser.add_argument("--db", default="docstore.db", help="ベクトルDBへのパス")
+parser.add_argument("--db", default="../docstore.db", help="ベクトルDBへのパス")
 
 args = parser.parse_args()
 
@@ -59,11 +61,22 @@ if __name__ == "__main__":
     # QAシステムの初期化
     try:
         logger.info(f"QAシステムを初期化しています（モデル: {args.model}, DB: {args.db}）")
+        db, embedder = setup_system(args.model, args.db)
         qa_system = DocumentQASystem.setup(
-            model_name="plamo",
-            db_path="../docstore.db", 
+            embedder==embedder,
+            db=db, 
         )
         logger.info("QAシステムの初期化が完了しました")
+
+        def cleanup():
+                logger.info("サーバーをシャットダウンしています。DBコネクションを閉じます。")
+                if db:
+                    db.close()
+                logger.info("DBコネクションを閉じました。")
+            
+        # プログラム終了時に実行される関数を登録
+        atexit.register(cleanup)
+        
     except Exception as e:
         logger.error(f"QAシステムの初期化に失敗しました: {e}")
         sys.exit(1)
