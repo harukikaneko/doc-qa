@@ -511,6 +511,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "accelerate" },
+    { name = "dotenv" },
     { name = "duckdb" },
     { name = "fastapi" },
     { name = "langchain" },
@@ -518,6 +519,7 @@ dependencies = [
     { name = "markitdown", extra = ["all"] },
     { name = "mcp", extra = ["cli"] },
     { name = "numpy" },
+    { name = "pydantic" },
     { name = "pypdf2" },
     { name = "sentence-transformers" },
     { name = "sentencepiece" },
@@ -530,6 +532,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "accelerate", specifier = ">=0.20.0" },
+    { name = "dotenv", specifier = ">=0.9.9" },
     { name = "duckdb", specifier = ">=0.9.0" },
     { name = "fastapi", specifier = ">=0.115.12" },
     { name = "langchain", specifier = ">=0.0.200" },
@@ -537,6 +540,7 @@ requires-dist = [
     { name = "markitdown", extras = ["all"], specifier = ">=0.1.1" },
     { name = "mcp", extras = ["cli"], specifier = ">=1.6.0" },
     { name = "numpy", specifier = ">=1.24.0" },
+    { name = "pydantic", specifier = ">=2.11.3" },
     { name = "pypdf2", specifier = ">=3.0.0" },
     { name = "sentence-transformers", specifier = ">=2.2.2" },
     { name = "sentencepiece", specifier = ">=0.1.97" },
@@ -544,6 +548,17 @@ requires-dist = [
     { name = "tqdm", specifier = ">=4.65.0" },
     { name = "transformers", specifier = "==4.51.3" },
     { name = "uvicorn", specifier = ">=0.34.1" },
+]
+
+[[package]]
+name = "dotenv"
+version = "0.9.9"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "python-dotenv" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b2/b7/545d2c10c1fc15e48653c91efde329a790f2eecfbbf2bd16003b5db2bab0/dotenv-0.9.9-py2.py3-none-any.whl", hash = "sha256:29cf74a087b31dafdb5a446b6d7e11cbce8ed2741540e2339c69fbef92c94ce9", size = 1892 },
 ]
 
 [[package]]

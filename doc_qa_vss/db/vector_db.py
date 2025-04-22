@@ -1,3 +1,4 @@
+import os
 import duckdb
 import json
 import logging
@@ -26,11 +27,29 @@ class VectorDatabase:
         logger.info(f"データベース {self.db_path} をオープン...")
         conn = duckdb.connect(self.db_path)
 
+        # doc-qaディレクトリ内に秘密情報と拡張機能のディレクトリを設定
+        base_dir = "../"  # ベースディレクトリ
+
+        # 必要なディレクトリパスを構築
+        # https://github.com/duckdb/duckdb/issues/12837
+        secrets_dir = os.path.join(base_dir, "secrets")
+        extension_dir = os.path.join(base_dir, "extensions")
+
+        # 絶対パスに変換（DuckDBが相対パスを正しく解決できない場合のため）
+        secrets_dir = os.path.abspath(secrets_dir)
+        extension_dir = os.path.abspath(extension_dir)
+
+        # ディレクトリの設定
+        conn.execute(f"SET secret_directory='{secrets_dir}';")
+        conn.execute(f"SET extension_directory='{extension_dir}';")
+
         # VSS拡張インストール＆ロード
         try:
             conn.execute("INSTALL vss;")
-        except Exception:
-            pass  # 既にインストール済みの可能性あり
+        except Exception as e:
+            logger.warning(f"VSS拡張のインストール中にエラーが発生しました: {e}")
+            logger.info("既にインストール済みの可能性があります。")
+
         conn.execute("LOAD vss;")
         # VSS 拡張は実験的機能であるため、実験的な永続化を有効にする
         conn.execute("SET hnsw_enable_experimental_persistence = true;")
