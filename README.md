@@ -23,7 +23,7 @@ docqa index --dir /path/to/documents --model plamo
 ```json
 {
   "mcpServers": {
-    "box-mcp-server": {
+    "qa-doc-mcp": {
       "command": "/path/to/uv", // 絶対パスが推奨
       "args": ["--directory", "/path/to/doc-qa/doc_qa_vss", "run", "server.py"]
     }
