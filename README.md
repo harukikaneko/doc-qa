@@ -7,7 +7,6 @@ MCP（Mean Contextualized Pooling）方式で文書検索を行います。
 
 ```bash
 uv venv
-source .venv/bin/activate
 uv pip install -e .
 ```
 
@@ -26,12 +25,7 @@ docqa index --dir /path/to/documents --model plamo
   "mcpServers": {
     "box-mcp-server": {
       "command": "/path/to/uv", // 絶対パスが推奨
-      "args": [
-        "--directory",
-        "/path/to/doc-qa-system/doc_qa_vss",
-        "run",
-        "server.py"
-      ]
+      "args": ["--directory", "/path/to/doc-qa/doc_qa_vss", "run", "server.py"]
     }
   }
 }
