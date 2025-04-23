@@ -125,7 +125,7 @@ async def create_document(document: Document) -> MCPResponse:
     try:
         db, embedder, _ = await QASystemSingleton.get_instance()
         logger.info(f"ドキュメントをインデックス化中: {document.title}")
-        doc_id = await index_document_content(
+        doc_id = index_document_content(
             document.content, 
             db, 
             embedder, 
