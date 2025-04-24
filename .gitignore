@@ -8,3 +8,4 @@ docstore.db.wal
 extensions/
 secrets/
 .venv/
+.env

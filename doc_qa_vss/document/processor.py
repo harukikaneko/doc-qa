@@ -1,7 +1,10 @@
 import logging
+import os
 from markitdown import MarkItDown
 from pathlib import Path
 from tqdm import tqdm
+from anthropic import Anthropic
+from dotenv import load_dotenv
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
@@ -9,6 +12,8 @@ from doc_qa_vss.db.vector_db import VectorDatabase
 from doc_qa_vss.models.embedding import BaseEmbedding
 
 logger = logging.getLogger(__name__)
+
+load_dotenv()
 
 class DocumentProcessor:
     """ドキュメントの読み込みと分割を行うクラス"""
@@ -178,13 +183,34 @@ def convert_to_markdown(file_path: str) -> str:
     """
     logger = logging.getLogger(__name__)
     logger.info(f"ファイルをMarkdownに変換中: {file_path}")
-    md = MarkItDown()
+    # markitdownを使用してファイルをMarkdownに変換
     try:
-
-        # markitdownを使用してファイルをMarkdownに変換
-        result = md.convert(file_path)
-        return result.text_content
+        if is_image_file(file_path):
+            client = Anthropic(api_key=os.getenv("OPENAI_API_KEY", ""))
+            md = MarkItDown(llm_client=client, llm_model="gpt-4o")
+            result = md.convert(file_path)
+            logger.info(result)
+            return result.text_content
+        else:
+            md = MarkItDown()
+            result = md.convert(file_path)
+            return result.text_content
     except Exception as e:
         logger.error(f"Markdownへの変換エラー {file_path}: {str(e)}")
         # エラーの場合は空の文字列を返す代わりに例外を再発生させる
         raise
+
+def is_image_file(file_path: str) -> bool:
+    """
+    ファイルが画像かどうかを判定
+    
+    Args:
+        file_path: 判定するファイルのパス
+    
+    Returns:
+        画像ファイルの場合はTrue、それ以外はFalse
+    """
+    # 一般的な画像ファイルの拡張子リスト
+    image_extensions = ['.jpg', '.jpeg', '.png']
+    _, ext = os.path.splitext(file_path.lower())
+    return ext in image_extensions
