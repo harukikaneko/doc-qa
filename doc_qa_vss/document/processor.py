@@ -3,7 +3,7 @@ import os
 from markitdown import MarkItDown
 from pathlib import Path
 from tqdm import tqdm
-from anthropic import Anthropic
+from openai import OpenAI
 from dotenv import load_dotenv
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
@@ -186,7 +186,7 @@ def convert_to_markdown(file_path: str) -> str:
     # markitdownを使用してファイルをMarkdownに変換
     try:
         if is_image_file(file_path):
-            client = Anthropic(api_key=os.getenv("OPENAI_API_KEY", ""))
+            client = OpenAI(api_key=os.getenv("OPENAI_API_KEY", ""))
             md = MarkItDown(llm_client=client, llm_model="gpt-4o")
             result = md.convert(file_path)
             logger.info(result)
