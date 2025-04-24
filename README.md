@@ -18,6 +18,14 @@ uv pip install -e .
 docqa index --dir /path/to/documents --model plamo
 ```
 
+### API（例）
+
+```bash
+curl -X POST "http://127.0.0.1:8000/mcp/query" \
+    -H "Content-Type: application/json" \
+    -d '{"text":""}'
+```
+
 ### setup
 
 ```json
