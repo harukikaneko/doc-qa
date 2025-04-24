@@ -189,7 +189,6 @@ def convert_to_markdown(file_path: str) -> str:
             client = OpenAI(api_key=os.getenv("OPENAI_API_KEY", ""))
             md = MarkItDown(llm_client=client, llm_model="gpt-4o")
             result = md.convert(file_path)
-            logger.info(result)
             return result.text_content
         else:
             md = MarkItDown()
