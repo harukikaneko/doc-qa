@@ -36,6 +36,8 @@ except ImportError as e:
 # 設定を環境変数から読み込む
 MODEL_NAME = os.getenv("MODEL_NAME", "plamo")
 DB_PATH = os.getenv("DB_PATH", "../docstore.db")
+RERANKER_MODEL = os.getenv("RERANKER_MODEL", "hotchpotch/japanese-bge-reranker-v2-m3-v1")
+EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "2048"))
 
 class QASystemSingleton:
     _instance: Optional[Tuple[VectorDatabase, BaseEmbedding, DocumentQASystem]] = None
@@ -100,7 +102,7 @@ mcp = FastMCP("Doc QA VSS")
 # MCPツール
 @mcp.tool()
 async def get_answer(question: Question) -> MCPResponse:
-    """質問に対する回答を取得"""
+    """質問に対する回答を取得（ベクトル検索）"""
     try:
         db, _, qa_system = await QASystemSingleton.get_instance()
         # 質問処理

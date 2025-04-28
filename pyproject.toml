@@ -18,6 +18,7 @@ dependencies = [
   "pydantic>=2.11.3",
   "dotenv>=0.9.9",
   "openai>=1.76.0",
+  "lindera-py>=0.41.0",
 ]
 description = "Document QA system using vector similarity search with DuckDB-VSS"
 license = {text = "MIT"}

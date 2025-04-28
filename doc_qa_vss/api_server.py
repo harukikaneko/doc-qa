@@ -40,6 +40,8 @@ except ImportError as e:
 # 設定を環境変数から読み込む
 MODEL_NAME = os.getenv("MODEL_NAME", "plamo")
 DB_PATH = os.getenv("DB_PATH", "../docstore.db")
+RERANKER_MODEL = os.getenv("RERANKER_MODEL", "hotchpotch/japanese-bge-reranker-v2-m3-v1")
+EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "2048"))
 
 # ロギング設定
 logging.basicConfig(
@@ -101,11 +103,12 @@ class MCPResponse(BaseModel):
 
 @app.post("/mcp/query", response_model=MCPResponse)
 async def get_answer(question: Question):
-    """質問に対する回答を取得"""
+    """質問に対する回答を取得（ベクトル検索）意味合い検索や類似検索を行う"""
     try:
         _, _, qa_system = await QASystemSingleton.get_instance()
         # 質問処理
         logger.info(f"質問を処理しています: {question.text}")
+        # リランカーを使わずベクトル検索のみを使用
         result = await qa_system.answer_question_mcp(question.text)
 
         return MCPResponse(
@@ -123,13 +126,13 @@ async def get_answer(question: Question):
             error=f"質問処理に失敗しました: {str(e)}"
         )
 
-@app.post("/mcp/create", response_model=str)
+@app.post("/mcp/create", response_model=MCPResponse)
 async def create_document(document: Document):
-    """新しいドキュメントをインデックス化"""
+    """新しいドキュメントをインデックス化（ベクトル検索）"""
     try:
         db, embedder, _ = await QASystemSingleton.get_instance()
         logger.info(f"ドキュメントをインデックス化中: {document.title}")
-        doc_id = await index_document_content(
+        doc_id = index_document_content(
             document.content, 
             db, 
             embedder, 
